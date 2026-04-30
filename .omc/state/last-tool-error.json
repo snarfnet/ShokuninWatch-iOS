@@ -1,0 +1,7 @@
+{
+  "tool_name": "mcp__github__create_or_update_file",
+  "tool_input_preview": "{\"owner\":\"snarfnet\",\"repo\":\"MeerkatNews\",\"path\":\".github/workflows/copy-secrets.yml\",\"content\":\"name: Copy Secrets to ShokuninWatch-iOS\\n\\non:\\n  workflow_dispatch:\\n\\njobs:\\n  copy:\\n    runs-on: ubu...",
+  "error": "MCP error -32603: Not Found: Resource not found: Not Found",
+  "timestamp": "2026-04-30T07:24:02.581Z",
+  "retry_count": 1
+}
