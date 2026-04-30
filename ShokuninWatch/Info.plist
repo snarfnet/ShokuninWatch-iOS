@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>職人スマホ</string>
+    <key>CFBundleDisplayName</key>
+    <string>職人スマホ</string>
+    <key>CFBundleVersion</key>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(MARKETING_VERSION)</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>NSMotionUsageDescription</key>
+    <string>角度計と水平器のためにモーションセンサーを使用します</string>
+    <key>GADApplicationIdentifier</key>
+    <string>ca-app-pub-9404799280370656~5000819509</string>
+    <key>NSUserTrackingUsageDescription</key>
+    <string>パーソナライズ広告のためにデータを使用します</string>
+</dict>
+</plist>
