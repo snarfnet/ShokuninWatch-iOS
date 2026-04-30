@@ -35,11 +35,21 @@ jobs:
     - name: Generate Xcode project
       run: xcodegen generate
 
-    - name: Patch Info.plist build number
+    - name: Patch Info.plist after xcodegen
       run: |
+        # Patch build number
         sed -i "" "s|<string>\$(CURRENT_PROJECT_VERSION)</string>|<string>$BUILD_NUM</string>|" ShokuninWatch/Info.plist
         sed -i "" "/<key>CFBundleVersion<\/key>/{n;s|<string>[^<]*</string>|<string>$BUILD_NUM</string>|;}" ShokuninWatch/Info.plist
+        # Add iPad orientations and LaunchStoryboardName via PlistBuddy
+        /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad array" ShokuninWatch/Info.plist 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:0 string UIInterfaceOrientationPortrait" ShokuninWatch/Info.plist 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:1 string UIInterfaceOrientationPortraitUpsideDown" ShokuninWatch/Info.plist 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:2 string UIInterfaceOrientationLandscapeLeft" ShokuninWatch/Info.plist 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:3 string UIInterfaceOrientationLandscapeRight" ShokuninWatch/Info.plist 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Add :UILaunchStoryboardName string ''" ShokuninWatch/Info.plist 2>/dev/null || true
         grep -A1 CFBundleVersion ShokuninWatch/Info.plist
+        echo "--- iPad orientations ---"
+        /usr/libexec/PlistBuddy -c "Print :UISupportedInterfaceOrientations~ipad" ShokuninWatch/Info.plist
 
     - name: Import Distribution Certificate
       env:
