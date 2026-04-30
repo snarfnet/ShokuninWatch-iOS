@@ -46,7 +46,10 @@ jobs:
         /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:1 string UIInterfaceOrientationPortraitUpsideDown" ShokuninWatch/Info.plist 2>/dev/null || true
         /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:2 string UIInterfaceOrientationLandscapeLeft" ShokuninWatch/Info.plist 2>/dev/null || true
         /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:3 string UIInterfaceOrientationLandscapeRight" ShokuninWatch/Info.plist 2>/dev/null || true
-        /usr/libexec/PlistBuddy -c "Add :UILaunchStoryboardName string ''" ShokuninWatch/Info.plist 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Delete :UILaunchStoryboardName" ShokuninWatch/Info.plist 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Add :UILaunchStoryboardName string LaunchScreen" ShokuninWatch/Info.plist
+        /usr/libexec/PlistBuddy -c "Delete :UILaunchScreen" ShokuninWatch/Info.plist 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Add :UILaunchScreen dict" ShokuninWatch/Info.plist
         grep -A1 CFBundleVersion ShokuninWatch/Info.plist
         echo "--- iPad orientations ---"
         /usr/libexec/PlistBuddy -c "Print :UISupportedInterfaceOrientations~ipad" ShokuninWatch/Info.plist
