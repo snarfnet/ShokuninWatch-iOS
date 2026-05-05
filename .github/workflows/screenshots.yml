@@ -92,11 +92,11 @@ jobs:
             local file="$2"
             xcrun simctl terminate "$DEVICE_ID" com.snarfnet.shokuninwatch.ios || true
             if [ "$tab" = "angle" ]; then
-              xcrun simctl launch "$DEVICE_ID" com.snarfnet.shokuninwatch.ios
+              xcrun simctl launch "$DEVICE_ID" com.snarfnet.shokuninwatch.ios --args -screenshots
             else
-              xcrun simctl launch "$DEVICE_ID" com.snarfnet.shokuninwatch.ios --args -screenshotTab "$tab"
+              xcrun simctl launch "$DEVICE_ID" com.snarfnet.shokuninwatch.ios --args -screenshots -screenshotTab "$tab"
             fi
-            sleep 2
+            sleep 4
             xcrun simctl io "$DEVICE_ID" screenshot "screenshots-new/$file"
           }
 
