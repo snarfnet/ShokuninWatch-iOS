@@ -79,13 +79,10 @@ private struct GaugeDial: View {
                     .rotationEffect(.degrees(Double(index) * 5))
             }
 
-            ForEach([0, 90, 180, 270], id: \.self) { degree in
-                Text("\(degree)")
-                    .font(.system(size: 13, weight: .black, design: .monospaced))
-                    .foregroundColor(ShokuninTheme.steel)
-                    .offset(y: -101)
-                    .rotationEffect(.degrees(Double(degree)))
-            }
+            dialNumber("0", x: 0, y: -101)
+            dialNumber("90", x: 101, y: 0)
+            dialNumber("180", x: 0, y: 101)
+            dialNumber("270", x: -101, y: 0)
 
             Rectangle()
                 .fill(
@@ -108,7 +105,7 @@ private struct GaugeDial: View {
 
             VStack(spacing: 2) {
                 Text(String(format: "%.1f°", angle))
-                    .font(.system(size: 47, weight: .black, design: .monospaced))
+                    .font(.system(size: 47, weight: .black, design: .rounded))
                     .foregroundColor(ShokuninTheme.paper)
                     .shadow(color: Color.black, radius: 8)
                     .minimumScaleFactor(0.7)
@@ -120,5 +117,12 @@ private struct GaugeDial: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
+    }
+
+    private func dialNumber(_ text: String, x: CGFloat, y: CGFloat) -> some View {
+        Text(text)
+            .font(.system(size: 13, weight: .black, design: .rounded))
+            .foregroundColor(ShokuninTheme.steel)
+            .offset(x: x, y: y)
     }
 }
