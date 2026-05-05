@@ -4,84 +4,119 @@ struct AngleMeterView: View {
     @ObservedObject var motionManager: MotionManager
 
     var displayAngle: Double {
-        let a = motionManager.pitch
-        return (a.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+        let angle = motionManager.pitch
+        return (angle.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
     }
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WorkshopBackground()
 
-            VStack(spacing: 20) {
-                Text("デジタル角度計")
-                    .font(.headline)
-                    .foregroundColor(.orange)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 18) {
+                    ToolHeader(title: "角度計", subtitle: "DIGITAL ANGLE GAUGE", icon: "hammer.fill")
 
-                ZStack {
-                    Circle()
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 3)
-                        .frame(width: 220, height: 220)
+                    WorkshopPanel {
+                        VStack(spacing: 18) {
+                            GaugeDial(angle: displayAngle)
 
-                    // Tick marks
-                    ForEach(0..<36, id: \.self) { i in
-                        Rectangle()
-                            .fill(i % 9 == 0 ? Color.orange : Color.gray.opacity(0.5))
-                            .frame(width: i % 9 == 0 ? 2 : 1, height: i % 9 == 0 ? 16 : 8)
-                            .offset(y: -102)
-                            .rotationEffect(.degrees(Double(i) * 10))
+                            HStack(spacing: 10) {
+                                MetricTile(label: "ピッチ", value: String(format: "%.1f°", motionManager.pitch), tint: ShokuninTheme.amber)
+                                MetricTile(label: "ロール", value: String(format: "%.1f°", motionManager.roll), tint: ShokuninTheme.paper)
+                            }
+
+                            Button(action: { motionManager.resetReference() }) {
+                                Label("ゼロリセット", systemImage: "scope")
+                                    .font(.system(size: 18, weight: .black))
+                                    .foregroundColor(.black)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 15)
+                                    .background(ShokuninTheme.buttonGradient)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .shadow(color: ShokuninTheme.amber.opacity(0.35), radius: 12, y: 8)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
+                    .padding(.horizontal, 18)
 
-                    // Needle
-                    Rectangle()
-                        .fill(Color.orange)
-                        .frame(width: 3, height: 80)
-                        .offset(y: -40)
-                        .rotationEffect(.degrees(displayAngle))
-                        .animation(.easeOut(duration: 0.1), value: displayAngle)
-
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 12, height: 12)
-
-                    Text(String(format: "%.1f°", displayAngle))
-                        .font(.system(size: 42, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                        .offset(y: 60)
+                    BannerAdView(adUnitID: "ca-app-pub-9404799280370656/5212572496")
+                        .frame(height: 50)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .padding(.horizontal, 18)
                 }
-
-                HStack(spacing: 40) {
-                    VStack(spacing: 4) {
-                        Text("ピッチ")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(String(format: "%.1f°", motionManager.pitch))
-                            .font(.system(size: 18, design: .monospaced))
-                            .foregroundColor(.orange)
-                    }
-                    VStack(spacing: 4) {
-                        Text("ロール")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(String(format: "%.1f°", motionManager.roll))
-                            .font(.system(size: 18, design: .monospaced))
-                            .foregroundColor(.orange)
-                    }
-                }
-
-                Button(action: { motionManager.resetReference() }) {
-                    Text("ゼロリセット")
-                        .font(.headline)
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 12)
-                        .background(Color.orange)
-                        .clipShape(Capsule())
-                }
-
-                BannerAdView(adUnitID: "ca-app-pub-9404799280370656/5212572496")
-                    .frame(height: 50)
+                .padding(.bottom, 26)
             }
-            .padding()
         }
+    }
+}
+
+private struct GaugeDial: View {
+    let angle: Double
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [ShokuninTheme.ironLight, ShokuninTheme.soot],
+                        center: .center,
+                        startRadius: 20,
+                        endRadius: 140
+                    )
+                )
+                .frame(width: 282, height: 282)
+                .overlay(Circle().stroke(ShokuninTheme.steel.opacity(0.40), lineWidth: 2))
+                .overlay(Circle().stroke(ShokuninTheme.amber.opacity(0.26), lineWidth: 8).padding(9))
+
+            ForEach(0..<72, id: \.self) { index in
+                Rectangle()
+                    .fill(index % 18 == 0 ? ShokuninTheme.amber : ShokuninTheme.steel.opacity(index % 6 == 0 ? 0.62 : 0.28))
+                    .frame(width: index % 18 == 0 ? 3 : 1, height: index % 6 == 0 ? 18 : 9)
+                    .offset(y: -128)
+                    .rotationEffect(.degrees(Double(index) * 5))
+            }
+
+            ForEach([0, 90, 180, 270], id: \.self) { degree in
+                Text("\(degree)")
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .foregroundColor(ShokuninTheme.steel)
+                    .offset(y: -101)
+                    .rotationEffect(.degrees(Double(degree)))
+            }
+
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [ShokuninTheme.amber, ShokuninTheme.amberDeep],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 5, height: 98)
+                .offset(y: -49)
+                .rotationEffect(.degrees(angle))
+                .shadow(color: ShokuninTheme.amber.opacity(0.55), radius: 10)
+                .animation(.easeOut(duration: 0.10), value: angle)
+
+            Circle()
+                .fill(ShokuninTheme.buttonGradient)
+                .frame(width: 24, height: 24)
+                .overlay(Circle().stroke(Color.black.opacity(0.45), lineWidth: 3))
+
+            VStack(spacing: 2) {
+                Text(String(format: "%.1f°", angle))
+                    .font(.system(size: 47, weight: .black, design: .monospaced))
+                    .foregroundColor(ShokuninTheme.paper)
+                    .shadow(color: Color.black, radius: 8)
+                    .minimumScaleFactor(0.7)
+                Text("MASTER CUT")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundColor(ShokuninTheme.amber)
+            }
+            .offset(y: 76)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
     }
 }
