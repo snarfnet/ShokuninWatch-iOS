@@ -40,10 +40,12 @@ struct AngleMeterView: View {
                     }
                     .padding(.horizontal, 18)
 
-                    BannerAdView(adUnitID: "ca-app-pub-9404799280370656/5212572496")
-                        .frame(height: 50)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .padding(.horizontal, 18)
+                    if !AppRuntime.isScreenshotRun {
+                        BannerAdView(adUnitID: "ca-app-pub-9404799280370656/5212572496")
+                            .frame(height: 50)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .padding(.horizontal, 18)
+                    }
                 }
                 .padding(.bottom, 26)
             }
