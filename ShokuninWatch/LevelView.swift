@@ -3,8 +3,8 @@ import SwiftUI
 struct LevelView: View {
     @ObservedObject var motionManager: MotionManager
 
-    private let bubbleRadius: CGFloat = 100
-    private let dotRadius: CGFloat = 16
+    private let bubbleRadius: CGFloat = 104
+    private let dotRadius: CGFloat = 17
 
     var bubbleOffset: CGSize {
         let clampedRoll = max(-15, min(15, motionManager.roll))
@@ -18,77 +18,112 @@ struct LevelView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            WorkshopBackground()
 
-            VStack(spacing: 20) {
-                Text("水平器")
-                    .font(.headline)
-                    .foregroundColor(.orange)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 18) {
+                    ToolHeader(title: "水平器", subtitle: "SITE LEVEL CHECK", icon: "wrench.and.screwdriver.fill")
 
-                ZStack {
-                    // Outer circle
-                    Circle()
-                        .stroke(isLevel ? Color.green : Color.gray, lineWidth: 3)
-                        .frame(width: bubbleRadius * 2, height: bubbleRadius * 2)
+                    WorkshopPanel {
+                        VStack(spacing: 18) {
+                            LevelDial(
+                                bubbleOffset: bubbleOffset,
+                                bubbleRadius: bubbleRadius,
+                                dotRadius: dotRadius,
+                                isLevel: isLevel
+                            )
 
-                    // Center guide
-                    Circle()
-                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        .frame(width: bubbleRadius, height: bubbleRadius)
+                            HStack(spacing: 10) {
+                                MetricTile(
+                                    label: "水平",
+                                    value: String(format: "%.1f°", motionManager.roll),
+                                    tint: abs(motionManager.roll) < 0.5 ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed
+                                )
+                                MetricTile(
+                                    label: "垂直",
+                                    value: String(format: "%.1f°", motionManager.pitch),
+                                    tint: abs(motionManager.pitch) < 0.5 ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed
+                                )
+                            }
 
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                        .frame(width: bubbleRadius * 0.4, height: bubbleRadius * 0.4)
-
-                    // Crosshair
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 1, height: bubbleRadius * 2)
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: bubbleRadius * 2, height: 1)
-
-                    // Bubble dot
-                    Circle()
-                        .fill(isLevel ? Color.green : Color.red)
-                        .frame(width: dotRadius * 2, height: dotRadius * 2)
-                        .shadow(color: (isLevel ? Color.green : Color.red).opacity(0.6), radius: 8)
-                        .offset(bubbleOffset)
-                        .animation(.easeOut(duration: 0.05), value: bubbleOffset)
-                }
-
-                HStack(spacing: 40) {
-                    VStack(spacing: 4) {
-                        Text("水平")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(String(format: "%.1f°", motionManager.roll))
-                            .font(.system(size: 24, weight: .semibold, design: .monospaced))
-                            .foregroundColor(abs(motionManager.roll) < 0.5 ? .green : .red)
+                            HStack(spacing: 10) {
+                                Image(systemName: isLevel ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                                Text(isLevel ? "水平OK" : "調整中")
+                            }
+                            .font(.system(size: 21, weight: .black))
+                            .foregroundColor(isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.black.opacity(0.28))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke((isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber).opacity(0.45), lineWidth: 1)
+                                    )
+                            )
+                        }
                     }
-                    VStack(spacing: 4) {
-                        Text("垂直")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(String(format: "%.1f°", motionManager.pitch))
-                            .font(.system(size: 24, weight: .semibold, design: .monospaced))
-                            .foregroundColor(abs(motionManager.pitch) < 0.5 ? .green : .red)
-                    }
-                }
+                    .padding(.horizontal, 18)
 
-                if isLevel {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                        Text("水平OK")
-                    }
-                    .font(.title3)
-                    .foregroundColor(.green)
+                    BannerAdView(adUnitID: "ca-app-pub-9404799280370656/5212572496")
+                        .frame(height: 50)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .padding(.horizontal, 18)
                 }
-
-                BannerAdView(adUnitID: "ca-app-pub-9404799280370656/5212572496")
-                    .frame(height: 50)
+                .padding(.bottom, 26)
             }
-            .padding()
         }
+    }
+}
+
+private struct LevelDial: View {
+    let bubbleOffset: CGSize
+    let bubbleRadius: CGFloat
+    let dotRadius: CGFloat
+    let isLevel: Bool
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 28)
+                .fill(Color.black.opacity(0.28))
+                .frame(width: 292, height: 292)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28)
+                        .stroke(ShokuninTheme.steel.opacity(0.38), lineWidth: 1)
+                )
+
+            Circle()
+                .stroke(isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.steel.opacity(0.58), lineWidth: 4)
+                .frame(width: bubbleRadius * 2, height: bubbleRadius * 2)
+                .shadow(color: (isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber).opacity(0.28), radius: 12)
+
+            ForEach([0.40, 0.70, 1.00], id: \.self) { scale in
+                Circle()
+                    .stroke(ShokuninTheme.steel.opacity(scale == 1.0 ? 0.0 : 0.20), lineWidth: 1)
+                    .frame(width: bubbleRadius * 2 * scale, height: bubbleRadius * 2 * scale)
+            }
+
+            Rectangle()
+                .fill(ShokuninTheme.steel.opacity(0.28))
+                .frame(width: 2, height: bubbleRadius * 2)
+            Rectangle()
+                .fill(ShokuninTheme.steel.opacity(0.28))
+                .frame(width: bubbleRadius * 2, height: 2)
+
+            Circle()
+                .stroke(ShokuninTheme.amber.opacity(0.60), lineWidth: 2)
+                .frame(width: 46, height: 46)
+
+            Circle()
+                .fill(isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed)
+                .frame(width: dotRadius * 2, height: dotRadius * 2)
+                .overlay(Circle().stroke(Color.white.opacity(0.45), lineWidth: 2))
+                .shadow(color: (isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed).opacity(0.72), radius: 14)
+                .offset(bubbleOffset)
+                .animation(.easeOut(duration: 0.05), value: bubbleOffset)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
     }
 }
