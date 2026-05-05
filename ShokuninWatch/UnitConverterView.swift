@@ -168,7 +168,7 @@ private struct UnitValueBox: View {
             HStack(spacing: 10) {
                 if let value {
                     Text(value)
-                        .font(.system(size: 38, weight: .black, design: .monospaced))
+                        .font(.system(size: 38, weight: .black, design: .rounded))
                         .foregroundColor(ShokuninTheme.amber)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .minimumScaleFactor(0.55)
@@ -176,7 +176,7 @@ private struct UnitValueBox: View {
                 } else {
                     TextField("0", text: $inputText)
                         .keyboardType(.decimalPad)
-                        .font(.system(size: 38, weight: .black, design: .monospaced))
+                        .font(.system(size: 38, weight: .black, design: .rounded))
                         .foregroundColor(ShokuninTheme.paper)
                         .minimumScaleFactor(0.55)
                         .lineLimit(1)
