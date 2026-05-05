@@ -150,7 +150,7 @@ struct MetricTile: View {
                 .font(.system(size: 13, weight: .bold))
                 .foregroundColor(ShokuninTheme.steel)
             Text(value)
-                .font(.system(size: 24, weight: .black, design: .monospaced))
+                .font(.system(size: 24, weight: .black, design: .rounded))
                 .foregroundColor(tint)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
