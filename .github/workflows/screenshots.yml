@@ -1,0 +1,81 @@
+name: Capture App Screenshots
+
+on:
+  workflow_dispatch:
+
+jobs:
+  screenshots:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          XCODE_APP=$(ls /Applications/ | grep -E "^Xcode_2[6-9]|^Xcode_[3-9][0-9]" | sort -V | tail -1)
+          if [ -n "$XCODE_APP" ]; then
+            sudo xcode-select -s "/Applications/$XCODE_APP/Contents/Developer"
+          else
+            XCODE_APP=$(ls /Applications/ | grep "^Xcode_" | sort -V | tail -1)
+            sudo xcode-select -s "/Applications/$XCODE_APP/Contents/Developer"
+          fi
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build for simulator
+        run: |
+          xcodebuild build \
+            -scheme ShokuninWatch \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Capture iPhone screenshots
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find build/DerivedData/Build/Products/Debug-iphonesimulator -name "ShokuninWatch.app" -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            echo "App not found"
+            exit 1
+          fi
+
+          DEVICE_TYPE=$(xcrun simctl list devicetypes | grep -E "iPhone 16 Pro Max|iPhone 15 Pro Max|iPhone 14 Pro Max" | tail -1 | sed -E 's/.*\(([^)]+)\).*/\1/')
+          RUNTIME=$(xcrun simctl list runtimes | grep -E "iOS .*\\(.*available.*\\)" | tail -1 | sed -E 's/.*\(([^)]+)\).*/\1/')
+          DEVICE_ID=$(xcrun simctl create "ShokuninWatch Screenshots" "$DEVICE_TYPE" "$RUNTIME")
+
+          mkdir -p screenshots-new
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+
+          capture() {
+            local tab="$1"
+            local file="$2"
+            xcrun simctl terminate "$DEVICE_ID" com.snarfnet.shokuninwatch.ios || true
+            if [ "$tab" = "angle" ]; then
+              xcrun simctl launch "$DEVICE_ID" com.snarfnet.shokuninwatch.ios
+            else
+              xcrun simctl launch "$DEVICE_ID" com.snarfnet.shokuninwatch.ios --args -screenshotTab "$tab"
+            fi
+            sleep 2
+            xcrun simctl io "$DEVICE_ID" screenshot "screenshots-new/$file"
+          }
+
+          capture angle iphone_1_angle.png
+          capture level iphone_2_level.png
+          capture converter iphone_3_converter.png
+
+          xcrun simctl shutdown "$DEVICE_ID"
+          xcrun simctl delete "$DEVICE_ID"
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: shokuninwatch-screenshots
+          path: screenshots-new/*.png
