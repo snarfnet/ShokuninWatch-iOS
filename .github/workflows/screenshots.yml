@@ -97,6 +97,8 @@ jobs:
               xcrun simctl launch "$DEVICE_ID" com.snarfnet.shokuninwatch.ios --args -screenshots -screenshotTab "$tab"
             fi
             sleep 4
+            xcrun simctl spawn "$DEVICE_ID" log show --style compact --last 20s \
+              --predicate 'process == "ShokuninWatch" OR eventMessage CONTAINS[c] "ShokuninWatch" OR eventMessage CONTAINS[c] "crash"' || true
             xcrun simctl io "$DEVICE_ID" screenshot "screenshots-new/$file"
           }
 
