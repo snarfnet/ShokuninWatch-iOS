@@ -40,7 +40,7 @@ struct LevelView: View {
                                     tint: abs(motionManager.roll) < 0.5 ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed
                                 )
                                 MetricTile(
-                                    label: "垂直",
+                                    label: "傾き",
                                     value: String(format: "%.1f°", motionManager.pitch),
                                     tint: abs(motionManager.pitch) < 0.5 ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed
                                 )
