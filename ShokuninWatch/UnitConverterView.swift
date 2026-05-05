@@ -68,7 +68,7 @@ struct UnitConverterView: View {
                             Label("現場メモ", systemImage: "note.text")
                                 .font(.system(size: 17, weight: .black))
                                 .foregroundColor(ShokuninTheme.amber)
-                            Text("尺・坪・インチ・フィートを現場で素早く確認できます。数字欄をタップして入力してください。")
+                            Text("尺・坪・インチ・フィートを現場ですばやく確認できます。数字をタップして入力してください。")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(ShokuninTheme.paper.opacity(0.86))
                                 .lineSpacing(4)
