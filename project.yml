@@ -38,3 +38,21 @@ targets:
         CODE_SIGN_STYLE: Automatic
     info:
       path: ShokuninWatch/Info.plist
+      properties:
+        CFBundleName: 職人スマホ
+        CFBundleDisplayName: 職人スマホ
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleIconName: AppIcon
+        UILaunchScreen: {}
+        UILaunchStoryboardName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSMotionUsageDescription: 角度計と水平器のためにモーションセンサーを使用します。
+        GADApplicationIdentifier: ca-app-pub-9404799280370656~5000819509
+        NSUserTrackingUsageDescription: パーソナライズ広告のためにデータを使用します。
