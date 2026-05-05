@@ -28,10 +28,10 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>NSMotionUsageDescription</key>
-    <string>角度計と水平器のためにモーションセンサーを使用します</string>
+    <string>角度計と水平器のためにモーションセンサーを使用します。</string>
     <key>GADApplicationIdentifier</key>
     <string>ca-app-pub-9404799280370656~5000819509</string>
     <key>NSUserTrackingUsageDescription</key>
-    <string>パーソナライズ広告のためにデータを使用します</string>
+    <string>パーソナライズ広告のためにデータを使用します。</string>
 </dict>
 </plist>
