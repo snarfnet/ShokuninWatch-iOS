@@ -107,8 +107,22 @@ jobs:
           xcrun simctl shutdown "$DEVICE_ID"
           xcrun simctl delete "$DEVICE_ID"
 
-      - name: Upload screenshots
+      - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4
         with:
           name: shokuninwatch-screenshots
           path: screenshots-new/*.png
+
+      - name: Set up ASC API Key
+        env:
+          ASC_API_KEY_CONTENT: ${{ secrets.ASC_API_KEY_CONTENT }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_API_KEY_CONTENT" | base64 -D > ~/.appstoreconnect/private_keys/AuthKey_WDXGY9WX55.p8
+          cp ~/.appstoreconnect/private_keys/AuthKey_WDXGY9WX55.p8 /tmp/asc_key.p8
+
+      - name: Install PyJWT
+        run: pip3 install --break-system-packages PyJWT requests
+
+      - name: Upload screenshots to ASC
+        run: python3 scripts/upload_screenshots.py
