@@ -57,11 +57,14 @@ if version_state in ('WAITING_FOR_REVIEW', 'IN_REVIEW'):
     sys.exit(0)
 
 if not version_id or version_state in ('READY_FOR_DISTRIBUTION', 'READY_FOR_SALE'):
-    print('Creating new version...')
+    # Get version string from the build
+    br = api('GET', f'/builds/{build_id}')
+    version_string = br.json()['data']['attributes'].get('version', '1.0')
+    print(f'Creating new version {version_string}...')
     r = api('POST', '/appStoreVersions', json={
         'data': {
             'type': 'appStoreVersions',
-            'attributes': {'platform': 'IOS', 'versionString': '1.1'},
+            'attributes': {'platform': 'IOS', 'versionString': version_string},
             'relationships': {'app': {'data': {'type': 'apps', 'id': APP_ID}}}
         }
     })
