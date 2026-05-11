@@ -4,17 +4,16 @@ struct LevelView: View {
     @ObservedObject var motionManager: MotionManager
 
     private let bubbleRadius: CGFloat = 104
-    private let dotRadius: CGFloat = 17
+    private let dotRadius: CGFloat = 18
 
-    var bubbleOffset: CGSize {
+    private var bubbleOffset: CGSize {
         let clampedRoll = max(-15, min(15, motionManager.roll))
         let clampedPitch = max(-15, min(15, motionManager.pitch))
-        let x = CGFloat(clampedRoll / 15.0) * bubbleRadius
-        let y = CGFloat(clampedPitch / 15.0) * bubbleRadius
-        return CGSize(width: x, height: y)
+        return CGSize(
+            width: CGFloat(clampedRoll / 15.0) * bubbleRadius,
+            height: CGFloat(clampedPitch / 15.0) * bubbleRadius
+        )
     }
-
-    var isLevel: Bool { motionManager.isLevel }
 
     var body: some View {
         ZStack {
@@ -22,7 +21,7 @@ struct LevelView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 18) {
-                    ToolHeader(title: "水平器", subtitle: "SITE LEVEL CHECK", icon: "wrench.and.screwdriver.fill")
+                    ToolHeader(title: "水平器", subtitle: "SITE LEVEL CHECK", icon: "level.fill")
 
                     WorkshopPanel {
                         VStack(spacing: 18) {
@@ -30,38 +29,25 @@ struct LevelView: View {
                                 bubbleOffset: bubbleOffset,
                                 bubbleRadius: bubbleRadius,
                                 dotRadius: dotRadius,
-                                isLevel: isLevel
+                                isLevel: motionManager.isLevel
                             )
 
                             HStack(spacing: 10) {
-                                MetricTile(
-                                    label: "水平",
+                                PrecisionReadout(
+                                    label: "ROLL",
                                     value: String(format: "%.1f°", motionManager.roll),
-                                    tint: abs(motionManager.roll) < 0.5 ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed
+                                    tint: abs(motionManager.roll) < 0.5 ? ShokuninTheme.safetyGreen : ShokuninTheme.amber,
+                                    icon: "arrow.left.and.right"
                                 )
-                                MetricTile(
-                                    label: "傾き",
+                                PrecisionReadout(
+                                    label: "PITCH",
                                     value: String(format: "%.1f°", motionManager.pitch),
-                                    tint: abs(motionManager.pitch) < 0.5 ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed
+                                    tint: abs(motionManager.pitch) < 0.5 ? ShokuninTheme.safetyGreen : ShokuninTheme.amber,
+                                    icon: "arrow.up.and.down"
                                 )
                             }
 
-                            HStack(spacing: 10) {
-                                Image(systemName: isLevel ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
-                                Text(isLevel ? "水平OK" : "調整中")
-                            }
-                            .font(.system(size: 21, weight: .black))
-                            .foregroundColor(isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.black.opacity(0.28))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke((isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber).opacity(0.45), lineWidth: 1)
-                                    )
-                            )
+                            LevelStatus(isLevel: motionManager.isLevel)
                         }
                     }
                     .padding(.horizontal, 18)
@@ -73,7 +59,7 @@ struct LevelView: View {
                             .padding(.horizontal, 18)
                     }
                 }
-                .padding(.bottom, 26)
+                .padding(.bottom, 24)
             }
         }
     }
@@ -87,45 +73,121 @@ private struct LevelDial: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 28)
-                .fill(Color.black.opacity(0.28))
-                .frame(width: 292, height: 292)
+            RoundedRectangle(cornerRadius: 30)
+                .fill(ShokuninTheme.insetMetal)
+                .frame(width: 304, height: 304)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 28)
-                        .stroke(ShokuninTheme.steel.opacity(0.38), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 30)
+                        .stroke(ShokuninTheme.steelBright.opacity(0.22), lineWidth: 1)
                 )
+
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            ShokuninTheme.amber.opacity(0.28),
+                            ShokuninTheme.amber.opacity(0.10),
+                            Color.black.opacity(0.22)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 250, height: 92)
+                .overlay(Capsule().stroke(ShokuninTheme.amber.opacity(0.34), lineWidth: 2))
+                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1).padding(8))
+                .rotationEffect(.degrees(-8))
 
             Circle()
                 .stroke(isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.steel.opacity(0.58), lineWidth: 4)
                 .frame(width: bubbleRadius * 2, height: bubbleRadius * 2)
-                .shadow(color: (isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber).opacity(0.28), radius: 12)
+                .shadow(color: (isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber).opacity(0.25), radius: 14)
 
-            ForEach([0.40, 0.70, 1.00], id: \.self) { scale in
+            ForEach([0.35, 0.62, 0.86], id: \.self) { scale in
                 Circle()
-                    .stroke(ShokuninTheme.steel.opacity(scale == 1.0 ? 0.0 : 0.20), lineWidth: 1)
+                    .stroke(ShokuninTheme.steel.opacity(0.18), lineWidth: 1)
                     .frame(width: bubbleRadius * 2 * scale, height: bubbleRadius * 2 * scale)
             }
 
             Rectangle()
-                .fill(ShokuninTheme.steel.opacity(0.28))
+                .fill(ShokuninTheme.steel.opacity(0.30))
                 .frame(width: 2, height: bubbleRadius * 2)
             Rectangle()
-                .fill(ShokuninTheme.steel.opacity(0.28))
+                .fill(ShokuninTheme.steel.opacity(0.30))
                 .frame(width: bubbleRadius * 2, height: 2)
 
             Circle()
-                .stroke(ShokuninTheme.amber.opacity(0.60), lineWidth: 2)
-                .frame(width: 46, height: 46)
+                .stroke(ShokuninTheme.amber.opacity(0.75), lineWidth: 2)
+                .frame(width: 48, height: 48)
+                .overlay(Circle().stroke(Color.black.opacity(0.34), lineWidth: 1).padding(6))
 
-            Circle()
-                .fill(isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed)
+            BubbleDot(isLevel: isLevel)
                 .frame(width: dotRadius * 2, height: dotRadius * 2)
-                .overlay(Circle().stroke(Color.white.opacity(0.45), lineWidth: 2))
-                .shadow(color: (isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed).opacity(0.72), radius: 14)
                 .offset(bubbleOffset)
-                .animation(.easeOut(duration: 0.05), value: bubbleOffset)
+                .animation(.snappy(duration: 0.10), value: bubbleOffset)
+
+            VStack {
+                HStack {
+                    Rivet()
+                    Spacer()
+                    Rivet()
+                }
+                Spacer()
+                HStack {
+                    Rivet()
+                    Spacer()
+                    Rivet()
+                }
+            }
+            .padding(19)
+            .frame(width: 304, height: 304)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
+        .frame(height: 316)
+    }
+}
+
+private struct BubbleDot: View {
+    let isLevel: Bool
+
+    var body: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [
+                        Color.white.opacity(0.90),
+                        (isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber).opacity(0.95),
+                        (isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed).opacity(0.82)
+                    ],
+                    center: .topLeading,
+                    startRadius: 2,
+                    endRadius: 25
+                )
+            )
+            .overlay(Circle().stroke(Color.white.opacity(0.55), lineWidth: 2))
+            .shadow(color: (isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.dangerRed).opacity(0.70), radius: 15)
+    }
+}
+
+private struct LevelStatus: View {
+    let isLevel: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: isLevel ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+            Text(isLevel ? "水平 OK" : "調整中")
+        }
+        .font(.system(size: 21, weight: .black, design: .rounded))
+        .foregroundColor(isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 13)
+                .fill(ShokuninTheme.insetMetal)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 13)
+                        .stroke((isLevel ? ShokuninTheme.safetyGreen : ShokuninTheme.amber).opacity(0.46), lineWidth: 1)
+                )
+        )
     }
 }
