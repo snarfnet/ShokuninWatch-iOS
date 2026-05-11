@@ -155,7 +155,7 @@ private struct GaugeDial: View {
         let x = CGFloat(sin(radians)) * radius
         let y = -CGFloat(cos(radians)) * radius
 
-        Text(text)
+        return Text(text)
             .font(.system(size: 11, weight: .black, design: .rounded))
             .foregroundColor(ShokuninTheme.steel)
             .offset(x: x, y: y)
