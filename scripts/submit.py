@@ -93,23 +93,34 @@ if r.status_code == 200:
         })
         print(f'Marketing URL for {locale}: {lr.status_code}')
 
-# Cancel any blocking reviewSubmissions
-canceled_any = False
+# Cancel any blocking reviewSubmissions, but reuse READY_FOR_REVIEW if possible
+existing_ready = []
 for state_filter in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW']:
     r = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]={state_filter}')
     if r.status_code == 200:
         for sub in r.json().get('data', []):
             sid = sub['id']
             st = sub['attributes']['state']
+            if st == 'READY_FOR_REVIEW':
+                existing_ready.append(sid)
             cr = api('PATCH', f'/reviewSubmissions/{sid}', json={
                 'data': {'type': 'reviewSubmissions', 'id': sid, 'attributes': {'canceled': True}}
             })
             print(f'Cancel {sid} state={st}: {cr.status_code}')
-            canceled_any = True
+            if cr.status_code != 200:
+                print(f'  Cancel failed: {cr.text[:200]}')
 
-if canceled_any:
-    print('Waiting 10s for cancellations to propagate...')
-    time.sleep(10)
+# If we couldn't cancel existing READY_FOR_REVIEW submissions, the version
+# may already be queued for review. Check current state.
+r = api('GET', f'/appStoreVersions/{version_id}')
+if r.status_code == 200:
+    current_state = r.json()['data']['attributes']['appStoreState']
+    print(f'Version state after cancellation: {current_state}')
+    if current_state in ('WAITING_FOR_REVIEW', 'IN_REVIEW'):
+        print(f'Already in review ({current_state}). Done!')
+        sys.exit(0)
+
+time.sleep(10)
 
 # Submit via reviewSubmissions API (with retry)
 submission_id = None
@@ -142,6 +153,8 @@ r = api('POST', '/reviewSubmissionItems', json={
     }
 })
 print(f'Add item: {r.status_code}')
+if r.status_code not in (200, 201):
+    print(f'  Add item error: {r.text[:300]}')
 
 r = api('PATCH', f'/reviewSubmissions/{submission_id}', json={
     'data': {
