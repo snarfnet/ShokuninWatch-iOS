@@ -93,22 +93,24 @@ if r.status_code == 200:
         })
         print(f'Marketing URL for {locale}: {lr.status_code}')
 
-# Cancel any blocking reviewSubmissions, but reuse READY_FOR_REVIEW if possible
-existing_ready = []
-for state_filter in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW']:
+# Cancel/delete any blocking reviewSubmissions
+for state_filter in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW', 'CANCELING']:
     r = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]={state_filter}')
     if r.status_code == 200:
         for sub in r.json().get('data', []):
             sid = sub['id']
             st = sub['attributes']['state']
-            if st == 'READY_FOR_REVIEW':
-                existing_ready.append(sid)
+            # Try cancel first
             cr = api('PATCH', f'/reviewSubmissions/{sid}', json={
                 'data': {'type': 'reviewSubmissions', 'id': sid, 'attributes': {'canceled': True}}
             })
             print(f'Cancel {sid} state={st}: {cr.status_code}')
             if cr.status_code != 200:
-                print(f'  Cancel failed: {cr.text[:200]}')
+                # Try DELETE if cancel fails
+                dr = api('DELETE', f'/reviewSubmissions/{sid}')
+                print(f'Delete {sid}: {dr.status_code}')
+                if dr.status_code not in (200, 204):
+                    print(f'  Delete failed: {dr.text[:200]}')
 
 # If we couldn't cancel existing READY_FOR_REVIEW submissions, the version
 # may already be queued for review. Check current state.
