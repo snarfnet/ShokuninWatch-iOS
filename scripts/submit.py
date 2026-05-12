@@ -124,7 +124,22 @@ if r.status_code == 200:
 
 time.sleep(10)
 
-# Submit via reviewSubmissions API (with retry)
+# Try legacy appStoreVersionSubmissions endpoint first (simpler, bypasses reviewSubmissions)
+print('Trying legacy appStoreVersionSubmissions...')
+r = api('POST', '/appStoreVersionSubmissions', json={
+    'data': {
+        'type': 'appStoreVersionSubmissions',
+        'relationships': {
+            'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}}
+        }
+    }
+})
+if r.status_code in (200, 201):
+    print(f'Submitted via legacy endpoint! Status: {r.status_code}')
+    sys.exit(0)
+print(f'Legacy submit: {r.status_code} {r.text[:300]}')
+
+# Fallback: reviewSubmissions API (with retry)
 submission_id = None
 for attempt in range(3):
     r = api('POST', '/reviewSubmissions', json={
