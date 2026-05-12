@@ -102,18 +102,6 @@ if r.status_code == 200:
         })
         print(f'Localization {locale}: {lr.status_code}')
 
-# Cancel/delete any blocking reviewSubmissions first
-for state_filter in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW', 'CANCELING']:
-    r = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]={state_filter}')
-    if r.status_code == 200:
-        for sub in r.json().get('data', []):
-            sid = sub['id']
-            st = sub['attributes']['state']
-            cr = api('PATCH', f'/reviewSubmissions/{sid}', json={
-                'data': {'type': 'reviewSubmissions', 'id': sid, 'attributes': {'canceled': True}}
-            })
-            print(f'Cancel {sid} state={st}: {cr.status_code}')
-
 # Check version state
 r = api('GET', f'/appStoreVersions/{version_id}')
 if r.status_code == 200:
@@ -123,59 +111,70 @@ if r.status_code == 200:
         print(f'Already in review ({current_state}). Done!')
         sys.exit(0)
 
-# Check if ghost reviewSubmissions are blocking (READY_FOR_REVIEW with 0 items)
-ghost_count = 0
+# Try to reuse existing READY_FOR_REVIEW submissions (ghosts with 0 items)
+submission_id = None
 r = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]=READY_FOR_REVIEW')
 if r.status_code == 200:
     for sub in r.json().get('data', []):
         sid = sub['id']
-        # Check if it has items
         ir = api('GET', f'/reviewSubmissions/{sid}/items')
         item_count = len(ir.json().get('data', [])) if ir.status_code == 200 else -1
-        print(f'  ReviewSubmission {sid}: {item_count} items')
+        print(f'  Existing submission {sid}: {item_count} items')
         if item_count == 0:
-            ghost_count += 1
+            r2 = api('POST', '/reviewSubmissionItems', json={
+                'data': {
+                    'type': 'reviewSubmissionItems',
+                    'relationships': {
+                        'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': sid}},
+                        'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}}
+                    }
+                }
+            })
+            print(f'  Add item to {sid}: {r2.status_code}')
+            if r2.status_code in (200, 201):
+                submission_id = sid
+                print(f'Reusing existing submission {sid}')
+                break
+            else:
+                print(f'  {r2.text[:300]}')
 
-if ghost_count > 0:
-    print(f'ERROR: {ghost_count} ghost reviewSubmission(s) blocking this app.')
-    print('These have READY_FOR_REVIEW state but 0 items. API cannot cancel/delete them.')
-    print('Please delete them manually in App Store Connect web UI:')
-    print('  App Store Connect > Apps > 職人スマホ > cancel any pending submissions')
-    print('Then re-run this workflow.')
-    sys.exit(0)
+if not submission_id:
+    # Cancel any remaining blockers
+    for sf in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW', 'CANCELING']:
+        r = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]={sf}')
+        if r.status_code == 200:
+            for sub in r.json().get('data', []):
+                api('PATCH', f'/reviewSubmissions/{sub["id"]}', json={
+                    'data': {'type': 'reviewSubmissions', 'id': sub['id'], 'attributes': {'canceled': True}}
+                })
 
-# No ghosts - safe to create reviewSubmission and submit
-r = api('POST', '/reviewSubmissions', json={
-    'data': {
-        'type': 'reviewSubmissions',
-        'relationships': {'app': {'data': {'type': 'apps', 'id': APP_ID}}}
-    }
-})
-if r.status_code != 201:
-    print(f'Create reviewSubmission: {r.status_code} {r.text[:500]}')
-    sys.exit(1)
-submission_id = r.json()['data']['id']
-print(f'ReviewSubmission created: {submission_id}')
-
-r = api('POST', '/reviewSubmissionItems', json={
-    'data': {
-        'type': 'reviewSubmissionItems',
-        'relationships': {
-            'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': submission_id}},
-            'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}}
+    r = api('POST', '/reviewSubmissions', json={
+        'data': {
+            'type': 'reviewSubmissions',
+            'relationships': {'app': {'data': {'type': 'apps', 'id': APP_ID}}}
         }
-    }
-})
-print(f'Add item: {r.status_code}')
-if r.status_code not in (200, 201):
-    print(f'  Add item error: {r.text[:500]}')
-    # Cancel the empty submission to avoid creating another ghost
-    cr = api('PATCH', f'/reviewSubmissions/{submission_id}', json={
-        'data': {'type': 'reviewSubmissions', 'id': submission_id, 'attributes': {'canceled': True}}
     })
-    print(f'  Cancelled empty submission: {cr.status_code}')
-    sys.exit(1)
+    if r.status_code != 201:
+        print(f'Create reviewSubmission: {r.status_code} {r.text[:500]}')
+        sys.exit(1)
+    submission_id = r.json()['data']['id']
+    print(f'ReviewSubmission created: {submission_id}')
 
+    r = api('POST', '/reviewSubmissionItems', json={
+        'data': {
+            'type': 'reviewSubmissionItems',
+            'relationships': {
+                'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': submission_id}},
+                'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}}
+            }
+        }
+    })
+    print(f'Add item: {r.status_code}')
+    if r.status_code not in (200, 201):
+        print(f'  Add item error: {r.text[:500]}')
+        sys.exit(1)
+
+# Submit
 r = api('PATCH', f'/reviewSubmissions/{submission_id}', json={
     'data': {
         'type': 'reviewSubmissions',
