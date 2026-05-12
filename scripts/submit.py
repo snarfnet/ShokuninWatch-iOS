@@ -81,17 +81,26 @@ r = api('PATCH', f'/appStoreVersions/{version_id}/relationships/build',
     json={'data': {'type': 'builds', 'id': build_id}})
 print(f'Build assigned: {r.status_code}')
 
-# Set marketing URL on all localizations
+# Set marketing URL and whatsNew on all localizations
+whats_new = {
+    'ja': 'パフォーマンス改善と安定性の向上。',
+    'en-US': 'Performance improvements and stability enhancements.'
+}
 r = api('GET', f'/appStoreVersions/{version_id}/appStoreVersionLocalizations')
 if r.status_code == 200:
     for loc in r.json().get('data', []):
         loc_id = loc['id']
         locale = loc['attributes']['locale']
+        attrs = {'marketingUrl': 'https://snarfnet.github.io/'}
+        if locale in whats_new:
+            attrs['whatsNew'] = whats_new[locale]
+        else:
+            attrs['whatsNew'] = whats_new['en-US']
         lr = api('PATCH', f'/appStoreVersionLocalizations/{loc_id}', json={
             'data': {'type': 'appStoreVersionLocalizations', 'id': loc_id,
-                     'attributes': {'marketingUrl': 'https://snarfnet.github.io/'}}
+                     'attributes': attrs}
         })
-        print(f'Marketing URL for {locale}: {lr.status_code}')
+        print(f'Localization {locale}: {lr.status_code}')
 
 # Cancel/delete any blocking reviewSubmissions first
 for state_filter in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW', 'CANCELING']:
