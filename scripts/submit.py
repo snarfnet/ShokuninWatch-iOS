@@ -93,6 +93,18 @@ if r.status_code == 200:
         })
         print(f'Marketing URL for {locale}: {lr.status_code}')
 
+# Delete existing appStoreVersionSubmission if present (blocks new submissions)
+print('Checking for existing appStoreVersionSubmission...')
+r = api('GET', f'/appStoreVersions/{version_id}/appStoreVersionSubmission')
+if r.status_code == 200:
+    sub_id = r.json()['data']['id']
+    print(f'Found existing submission {sub_id}, deleting...')
+    dr = api('DELETE', f'/appStoreVersionSubmissions/{sub_id}')
+    print(f'Delete existing submission: {dr.status_code}')
+    if dr.status_code not in (200, 204):
+        print(f'  {dr.text[:200]}')
+    time.sleep(5)
+
 # Cancel/delete any blocking reviewSubmissions
 for state_filter in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW', 'CANCELING']:
     r = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]={state_filter}')
@@ -100,46 +112,26 @@ for state_filter in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW', 'CANCELING']:
         for sub in r.json().get('data', []):
             sid = sub['id']
             st = sub['attributes']['state']
-            # Try cancel first
             cr = api('PATCH', f'/reviewSubmissions/{sid}', json={
                 'data': {'type': 'reviewSubmissions', 'id': sid, 'attributes': {'canceled': True}}
             })
             print(f'Cancel {sid} state={st}: {cr.status_code}')
             if cr.status_code != 200:
-                # Try DELETE if cancel fails
                 dr = api('DELETE', f'/reviewSubmissions/{sid}')
                 print(f'Delete {sid}: {dr.status_code}')
-                if dr.status_code not in (200, 204):
-                    print(f'  Delete failed: {dr.text[:200]}')
 
-# If we couldn't cancel existing READY_FOR_REVIEW submissions, the version
-# may already be queued for review. Check current state.
+# Check version state after cleanup
 r = api('GET', f'/appStoreVersions/{version_id}')
 if r.status_code == 200:
     current_state = r.json()['data']['attributes']['appStoreState']
-    print(f'Version state after cancellation: {current_state}')
+    print(f'Version state after cleanup: {current_state}')
     if current_state in ('WAITING_FOR_REVIEW', 'IN_REVIEW'):
         print(f'Already in review ({current_state}). Done!')
         sys.exit(0)
 
-time.sleep(10)
+time.sleep(5)
 
-# Try legacy appStoreVersionSubmissions endpoint first (simpler, bypasses reviewSubmissions)
-print('Trying legacy appStoreVersionSubmissions...')
-r = api('POST', '/appStoreVersionSubmissions', json={
-    'data': {
-        'type': 'appStoreVersionSubmissions',
-        'relationships': {
-            'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}}
-        }
-    }
-})
-if r.status_code in (200, 201):
-    print(f'Submitted via legacy endpoint! Status: {r.status_code}')
-    sys.exit(0)
-print(f'Legacy submit: {r.status_code} {r.text[:300]}')
-
-# Fallback: reviewSubmissions API (with retry)
+# Submit via reviewSubmissions API
 submission_id = None
 for attempt in range(3):
     r = api('POST', '/reviewSubmissions', json={
@@ -152,12 +144,37 @@ for attempt in range(3):
         submission_id = r.json()['data']['id']
         print(f'ReviewSubmission created: {submission_id}')
         break
-    print(f'Create reviewSubmission attempt {attempt+1}/3 failed: {r.status_code} {r.text[:200]}')
-    if attempt < 2:
+    elif r.status_code == 409:
+        # Existing submission blocking - try to find and cancel it
+        print(f'Conflict creating reviewSubmission, cleaning up...')
+        for sf in ['READY_FOR_REVIEW', 'UNRESOLVED_ISSUES']:
+            cr = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]={sf}')
+            if cr.status_code == 200:
+                for s in cr.json().get('data', []):
+                    api('PATCH', f'/reviewSubmissions/{s["id"]}', json={
+                        'data': {'type': 'reviewSubmissions', 'id': s['id'], 'attributes': {'canceled': True}}
+                    })
         time.sleep(10)
+    else:
+        print(f'Create reviewSubmission attempt {attempt+1}/3: {r.status_code} {r.text[:200]}')
+        if attempt < 2:
+            time.sleep(10)
 
 if not submission_id:
-    print('Could not create reviewSubmission after 3 attempts.')
+    # Last resort: try legacy endpoint
+    print('Trying legacy appStoreVersionSubmissions...')
+    r = api('POST', '/appStoreVersionSubmissions', json={
+        'data': {
+            'type': 'appStoreVersionSubmissions',
+            'relationships': {
+                'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}}
+            }
+        }
+    })
+    if r.status_code in (200, 201):
+        print(f'Submitted via legacy endpoint! Status: {r.status_code}')
+        sys.exit(0)
+    print(f'Could not create reviewSubmission. Legacy: {r.status_code} {r.text[:300]}')
     sys.exit(0)
 
 r = api('POST', '/reviewSubmissionItems', json={
@@ -172,6 +189,7 @@ r = api('POST', '/reviewSubmissionItems', json={
 print(f'Add item: {r.status_code}')
 if r.status_code not in (200, 201):
     print(f'  Add item error: {r.text[:300]}')
+    sys.exit(1)
 
 r = api('PATCH', f'/reviewSubmissions/{submission_id}', json={
     'data': {
