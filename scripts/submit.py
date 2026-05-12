@@ -114,118 +114,68 @@ if r.status_code == 200:
         print(f'Already in review ({current_state}). Done!')
         sys.exit(0)
 
-# Try submitting - if the version is tainted, delete it and create fresh
-def try_submit(vid):
-    """Attempt to submit version vid for review. Returns True on success."""
-    r = api('POST', '/reviewSubmissions', json={
-        'data': {
-            'type': 'reviewSubmissions',
-            'relationships': {'app': {'data': {'type': 'apps', 'id': APP_ID}}}
-        }
-    })
-    if r.status_code != 201:
-        print(f'Create reviewSubmission: {r.status_code} {r.text[:200]}')
-        return False
-    submission_id = r.json()['data']['id']
-    print(f'ReviewSubmission created: {submission_id}')
+# Check if ghost reviewSubmissions are blocking (READY_FOR_REVIEW with 0 items)
+ghost_count = 0
+r = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]=READY_FOR_REVIEW')
+if r.status_code == 200:
+    for sub in r.json().get('data', []):
+        sid = sub['id']
+        # Check if it has items
+        ir = api('GET', f'/reviewSubmissions/{sid}/items')
+        item_count = len(ir.json().get('data', [])) if ir.status_code == 200 else -1
+        print(f'  ReviewSubmission {sid}: {item_count} items')
+        if item_count == 0:
+            ghost_count += 1
 
-    r = api('POST', '/reviewSubmissionItems', json={
-        'data': {
-            'type': 'reviewSubmissionItems',
-            'relationships': {
-                'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': submission_id}},
-                'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': vid}}
-            }
-        }
-    })
-    print(f'Add item: {r.status_code}')
-    if r.status_code not in (200, 201):
-        print(f'  Add item error: {r.text[:300]}')
-        # Cancel the empty submission we just created
-        api('PATCH', f'/reviewSubmissions/{submission_id}', json={
-            'data': {'type': 'reviewSubmissions', 'id': submission_id, 'attributes': {'canceled': True}}
-        })
-        return False
-
-    r = api('PATCH', f'/reviewSubmissions/{submission_id}', json={
-        'data': {
-            'type': 'reviewSubmissions',
-            'id': submission_id,
-            'attributes': {'submitted': True}
-        }
-    })
-    if r.status_code == 200:
-        state = r.json()['data']['attributes']['state']
-        print(f'Submitted! State: {state}')
-        return True
-    print(f'Submit failed: {r.status_code} {r.text[:300]}')
-    return False
-
-# First attempt with existing version
-if try_submit(version_id):
+if ghost_count > 0:
+    print(f'ERROR: {ghost_count} ghost reviewSubmission(s) blocking this app.')
+    print('These have READY_FOR_REVIEW state but 0 items. API cannot cancel/delete them.')
+    print('Please delete them manually in App Store Connect web UI:')
+    print('  App Store Connect > Apps > 職人スマホ > cancel any pending submissions')
+    print('Then re-run this workflow.')
     sys.exit(0)
 
-# Version is tainted by ghost submissions - delete it and create fresh
-print(f'Version {version_id} is tainted. Deleting and recreating...')
-dr = api('DELETE', f'/appStoreVersions/{version_id}')
-print(f'Delete version: {dr.status_code}')
-if dr.status_code not in (200, 204):
-    print(f'  {dr.text[:300]}')
-    print('Could not delete tainted version. Please clear ghost submissions in ASC web UI.')
-    sys.exit(1)
-
-time.sleep(5)
-
-# Clean up any remaining ghost reviewSubmissions from the deleted version
-for state_filter in ['UNRESOLVED_ISSUES', 'READY_FOR_REVIEW', 'CANCELING']:
-    r = api('GET', f'/apps/{APP_ID}/reviewSubmissions?filter[state]={state_filter}')
-    if r.status_code == 200:
-        for sub in r.json().get('data', []):
-            api('PATCH', f'/reviewSubmissions/{sub["id"]}', json={
-                'data': {'type': 'reviewSubmissions', 'id': sub['id'], 'attributes': {'canceled': True}}
-            })
-
-time.sleep(5)
-
-# Get version string from build
-br = api('GET', f'/builds/{build_id}')
-version_string = br.json()['data']['attributes'].get('version', '1.0')
-print(f'Creating fresh version {version_string}...')
-r = api('POST', '/appStoreVersions', json={
+# No ghosts - safe to create reviewSubmission and submit
+r = api('POST', '/reviewSubmissions', json={
     'data': {
-        'type': 'appStoreVersions',
-        'attributes': {'platform': 'IOS', 'versionString': version_string},
+        'type': 'reviewSubmissions',
         'relationships': {'app': {'data': {'type': 'apps', 'id': APP_ID}}}
     }
 })
-if r.status_code not in (200, 201):
-    print(f'Failed to create version: {r.text[:300]}')
+if r.status_code != 201:
+    print(f'Create reviewSubmission: {r.status_code} {r.text[:500]}')
     sys.exit(1)
-new_version_id = r.json()['data']['id']
-print(f'New version: {new_version_id}')
+submission_id = r.json()['data']['id']
+print(f'ReviewSubmission created: {submission_id}')
 
-# Assign build to new version
-r = api('PATCH', f'/appStoreVersions/{new_version_id}/relationships/build',
-    json={'data': {'type': 'builds', 'id': build_id}})
-print(f'Build assigned: {r.status_code}')
+r = api('POST', '/reviewSubmissionItems', json={
+    'data': {
+        'type': 'reviewSubmissionItems',
+        'relationships': {
+            'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': submission_id}},
+            'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': version_id}}
+        }
+    }
+})
+print(f'Add item: {r.status_code}')
+if r.status_code not in (200, 201):
+    print(f'  Add item error: {r.text[:500]}')
+    # Cancel the empty submission to avoid creating another ghost
+    cr = api('PATCH', f'/reviewSubmissions/{submission_id}', json={
+        'data': {'type': 'reviewSubmissions', 'id': submission_id, 'attributes': {'canceled': True}}
+    })
+    print(f'  Cancelled empty submission: {cr.status_code}')
+    sys.exit(1)
 
-# Set marketing URL on new version localizations
-r = api('GET', f'/appStoreVersions/{new_version_id}/appStoreVersionLocalizations')
+r = api('PATCH', f'/reviewSubmissions/{submission_id}', json={
+    'data': {
+        'type': 'reviewSubmissions',
+        'id': submission_id,
+        'attributes': {'submitted': True}
+    }
+})
 if r.status_code == 200:
-    for loc in r.json().get('data', []):
-        loc_id = loc['id']
-        locale = loc['attributes']['locale']
-        lr = api('PATCH', f'/appStoreVersionLocalizations/{loc_id}', json={
-            'data': {'type': 'appStoreVersionLocalizations', 'id': loc_id,
-                     'attributes': {'marketingUrl': 'https://snarfnet.github.io/'}}
-        })
-        print(f'Marketing URL for {locale}: {lr.status_code}')
-
-time.sleep(5)
-
-# Submit the fresh version
-if try_submit(new_version_id):
-    sys.exit(0)
-
-print('Failed to submit fresh version.')
-sys.exit(1)
+    state = r.json()['data']['attributes']['state']
+    print(f'Submitted! State: {state}')
+else:
+    print(f'Submit failed: {r.status_code} {r.text[:500]}')
